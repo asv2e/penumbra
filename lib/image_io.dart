@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/foundation.dart' show compute;
+import 'package:flutter/foundation.dart' show compute, kIsWeb;
 
 import 'codecs/tiff_dng.dart';
 
@@ -40,23 +40,32 @@ Future<PickedImage?> pickImageFile() async {
 
 Future<ui.Image> _decodeEngine(Uint8List bytes, int maxSide) async {
   final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+  ui.ImageDescriptor? desc;
+  ui.Codec? codec;
   try {
-    final desc = await ui.ImageDescriptor.encoded(buffer);
+    desc = await ui.ImageDescriptor.encoded(buffer);
     int? tw;
     int? th;
-    if (math.max(desc.width, desc.height) > maxSide) {
-      if (desc.width >= desc.height) {
-        tw = maxSide;
-      } else {
-        th = maxSide;
+    if (!kIsWeb) {
+      final width = desc.width;
+      final height = desc.height;
+      if (math.max(width, height) > maxSide) {
+        if (width >= height) {
+          tw = maxSide;
+        } else {
+          th = maxSide;
+        }
       }
     }
-    final codec = await desc.instantiateCodec(targetWidth: tw, targetHeight: th);
+
+    codec = await desc.instantiateCodec(targetWidth: tw, targetHeight: th);
     final frame = await codec.getNextFrame();
-    codec.dispose();
-    desc.dispose();
-    return frame.image;
+    return kIsWeb
+        ? scaleToMax(frame.image, maxSide, disposeSrc: true)
+        : frame.image;
   } finally {
+    codec?.dispose();
+    desc?.dispose();
     buffer.dispose();
   }
 }
