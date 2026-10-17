@@ -129,6 +129,8 @@ class PresetPanel extends StatefulWidget {
     super.key,
     required this.renderer,
     required this.thumb,
+    required this.base,
+    this.extras = const RenderExtras(),
     required this.presetKey,
     required this.selected,
     required this.strength,
@@ -138,6 +140,11 @@ class PresetPanel extends StatefulWidget {
 
   final Renderer renderer;
   final ui.Image thumb;
+
+  /// The edits already applied to the photo. Every preview is this state with
+  /// one preset swapped in, so previews match what the photo looks like now.
+  final EditState base;
+  final RenderExtras extras;
   final String presetKey;
   final int selected;
   final double strength;
@@ -152,7 +159,11 @@ class _PresetPanelState extends State<PresetPanel> {
   late final List<Preset> _bank = presetBank[widget.presetKey]!;
   late final List<ui.Image> _thumbs = [
     for (var i = 0; i < _bank.length; i++)
-      widget.renderer.render(widget.thumb, EditState(presets: {widget.presetKey: PresetSel(i, 1.0)})),
+      widget.renderer.render(
+        widget.thumb,
+        widget.base.copyWith(presets: {...widget.base.presets, widget.presetKey: PresetSel(i, 1.0)}),
+        extras: widget.extras,
+      ),
   ];
 
   @override

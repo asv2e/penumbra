@@ -987,8 +987,11 @@ class _EditorPageState extends State<EditorPage> {
         body = Column(mainAxisSize: MainAxisSize.min, children: [
           if (key != null)
             PresetPanel(
+              key: ValueKey('presets-$key'),
               renderer: _renderer!,
               thumb: _thumb!,
+              base: _history[_cursor],
+              extras: _extras,
               presetKey: key,
               selected: _draft.presets[key]?.index ?? 0,
               strength: _draft.presets[key]?.strength ?? 1.0,
