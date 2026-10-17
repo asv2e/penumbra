@@ -8,7 +8,7 @@ import 'image_io.dart';
 bool get platformHasPhotoPicker => false;
 bool get platformCanShare => false;
 
-Future<PickedFile?> platformPickPhoto({required bool camera}) async => null;
+Future<PickedImage?> platformPickPhoto({required bool camera}) async => null;
 
 Future<String> platformSave(Uint8List bytes, String name, String mime) async {
   final f = XFile.fromData(bytes, mimeType: mime, name: name);

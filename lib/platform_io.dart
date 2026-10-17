@@ -14,10 +14,10 @@ bool get _mobile => Platform.isAndroid || Platform.isIOS;
 bool get platformHasPhotoPicker => _mobile;
 bool get platformCanShare => _mobile || Platform.isMacOS;
 
-Future<PickedFile?> platformPickPhoto({required bool camera}) async {
+Future<PickedImage?> platformPickPhoto({required bool camera}) async {
   final x = await ImagePicker().pickImage(source: camera ? ImageSource.camera : ImageSource.gallery);
   if (x == null) return null;
-  return PickedFile(await x.readAsBytes(), x.name);
+  return PickedImage(await x.readAsBytes(), x.name);
 }
 
 Future<void> platformShare(Uint8List bytes, String name, String mime) async {

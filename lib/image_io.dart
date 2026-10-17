@@ -8,8 +8,8 @@ import 'package:flutter/foundation.dart' show compute;
 
 import 'codecs/tiff_dng.dart';
 
-class PickedFile {
-  const PickedFile(this.bytes, this.name);
+class PickedImage {
+  const PickedImage(this.bytes, this.name);
   final Uint8List bytes;
   final String name;
 }
@@ -23,7 +23,7 @@ const rawExts = [
 const _stdExts = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'heic', 'heif', 'tif', 'tiff'];
 
 /// Opens the system file dialog. Works on every Flutter platform.
-Future<PickedFile?> pickImageFile() async {
+Future<PickedImage?> pickImageFile() async {
   final groups = <XTypeGroup>[
     XTypeGroup(
       label: 'Images and RAW',
@@ -35,7 +35,7 @@ Future<PickedFile?> pickImageFile() async {
   ];
   final f = await openFile(acceptedTypeGroups: groups);
   if (f == null) return null;
-  return PickedFile(await f.readAsBytes(), f.name);
+  return PickedImage(await f.readAsBytes(), f.name);
 }
 
 Future<ui.Image> _decodeEngine(Uint8List bytes, int maxSide) async {

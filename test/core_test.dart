@@ -10,6 +10,7 @@ import 'package:penumbra/edit_state.dart';
 import 'package:penumbra/faces.dart';
 import 'package:penumbra/geometry.dart';
 import 'package:penumbra/lut.dart';
+import 'package:penumbra/models.dart';
 import 'package:penumbra/params.dart';
 import 'package:penumbra/presets.dart';
 import 'package:penumbra/tools.dart';

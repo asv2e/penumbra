@@ -349,7 +349,7 @@ class Renderer {
           ...hsl(Param.hslLum.sublist(0, 4)), ...hsl(Param.hslLum.sublist(4)),
           ...pts,
         ],
-        extra: [curvesOn ? lutImg! : lut.identityLut],
+        extra: [curvesOn ? lutImg : lut.identityLut],
       ),
     );
   }

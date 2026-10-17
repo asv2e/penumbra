@@ -96,13 +96,13 @@ Geo buildGeometry(Size src, EditState s, bool applyCrop) {
   final ph = s[Param.perspH];
 
   final m = Matrix4.identity();
-  m.translate(-crop.left * fw, -crop.top * fh);
-  m.translate(fw / 2, fh / 2);
+  m.translateByDouble(-crop.left * fw, -crop.top * fh, 0.0, 1.0);
+  m.translateByDouble(fw / 2, fh / 2, 0.0, 1.0);
   if (pv != 0 || ph != 0) m.multiply(_perspective(fw, fh, pv, ph));
   m.rotateZ(theta);
-  m.scale(fill, fill);
-  if (s.flipH) m.scale(-1.0, 1.0);
+  m.scaleByDouble(fill, fill, 1.0, 1.0);
+  if (s.flipH) m.scaleByDouble(-1.0, 1.0, 1.0, 1.0);
   m.rotateZ(s.quarterTurns * math.pi / 2);
-  m.translate(-sw / 2, -sh / 2);
+  m.translateByDouble(-sw / 2, -sh / 2, 0.0, 1.0);
   return Geo(m, Size(ow.toDouble(), oh.toDouble()));
 }
