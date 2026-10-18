@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'edit_state.dart';
@@ -139,7 +140,8 @@ class _EditorPageState extends State<EditorPage> {
     setState(() => _busy = true);
     try {
       final full = await loadImage(bytes, name);
-      final preview = scaleToMax(full, 1600);
+      // Web re-runs every shader pass on each edit, so keep its working size smaller.
+      final preview = scaleToMax(full, kIsWeb ? 1024 : 1600);
       final thumb = scaleToMax(preview, 180);
       final old = [_full, _preview, _thumb, _shown, ..._overlays.values];
       _renderer?.clearCaches();
