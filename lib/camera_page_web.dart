@@ -326,8 +326,3 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
     );
   }
 }
-        ],
-      ),
-    );
-  }
-}
