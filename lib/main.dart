@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'editor_page.dart';
+import 'project_store.dart';
+import 'projects_page.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ProjectStore.instance.init();
   runApp(const PenumbraApp());
 }
 
@@ -20,7 +22,7 @@ class PenumbraApp extends StatelessWidget {
         brightness: Brightness.dark,
         colorSchemeSeed: const Color(0xFF4DB6AC),
       ),
-      home: const EditorPage(),
+      home: const ProjectsPage(),
     );
   }
 }

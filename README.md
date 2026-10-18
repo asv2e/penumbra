@@ -1,6 +1,8 @@
 # Penumbra
 
-Non-destructive photo editor with 36 tools. Runs on Android, iOS, web, Windows, macOS and Linux.
+<img src="assets/icon/icon.svg" width="96" align="right" alt="Penumbra icon">
+
+Non-destructive photo editor with 36 tools, from curves and lens blur to film looks. Opens JPEG, PNG, TIFF and DNG/RAW, and edits stay reversible until you export. Runs on Android, iOS, web, Windows, macOS and Linux.
 
 ## Run
 
@@ -8,7 +10,17 @@ Non-destructive photo editor with 36 tools. Runs on Android, iOS, web, Windows, 
     flutter pub get
     flutter run
 
-`tools/setup_platforms.sh [platforms]` creates the platform folders and applies the native patches (Android minSdk 24 and storage permission, iOS 15.5 and photo/camera usage strings, macOS file-dialog entitlement).
+`tools/setup_platforms.sh [platforms]` creates the platform folders and applies the native patches (Android minSdk 24 and storage permission, iOS 15.5 and photo/camera usage strings, macOS file-dialog entitlement), sets the app name and description, and generates the launcher icons from `assets/icon/`.
+
+Icon sources are `assets/icon/icon.svg` and `icon_foreground.svg` (Android adaptive layer). `tools/make_icons.py` renders the PNG masters that `flutter_launcher_icons` reads.
+
+## Projects
+
+Photos open as projects that live inside the app (IndexedDB on web, the app's documents folder elsewhere). The home screen lists them with a thumbnail of the current edit; tap one to continue, or use the menu on a card to rename, duplicate or delete it.
+
+A project stores the original file untouched, the edits as JSON, any double-exposure images and a thumbnail. Edits autosave shortly after each applied tool, undo or redo, and again when you leave the editor or the app goes to the background. Reopening a project restores the applied edits; one undo shows the original. The undo history from earlier sessions is not kept.
+
+Saving a project does not export a photo: use Save as JPEG, PNG or TIFF for that.
 
 ## File formats
 

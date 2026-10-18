@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -9,8 +10,12 @@ import 'faces_api.dart';
 import 'faces.dart';
 import 'image_io.dart';
 import 'models.dart';
+import 'open_photo.dart';
 import 'params.dart';
 import 'platform_api.dart';
+import 'project_codec.dart';
+import 'project_store.dart';
+import 'projects_page.dart' show promptProjectName;
 import 'renderer.dart';
 import 'tools.dart';
 import 'ui/color_panel.dart';
@@ -21,13 +26,17 @@ import 'ui/panels.dart';
 import 'ui/widgets.dart';
 
 class EditorPage extends StatefulWidget {
-  const EditorPage({super.key});
+  /// Pass [projectId] to reopen a saved project, or [newPhoto] to start one.
+  const EditorPage({super.key, this.projectId, this.newPhoto});
+
+  final String? projectId;
+  final PickedImage? newPhoto;
 
   @override
   State<EditorPage> createState() => _EditorPageState();
 }
 
-class _EditorPageState extends State<EditorPage> {
+class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   Renderer? _renderer;
   ui.Image? _full;
   ui.Image? _preview;
@@ -43,6 +52,14 @@ class _EditorPageState extends State<EditorPage> {
 
   final List<EditState> _history = [const EditState()];
   int _cursor = 0;
+
+  // Saved project (null when saving is unavailable).
+  String? _projectId;
+  String? _projectName;
+  final Map<int, String> _overlayNames = {};
+  Timer? _saveTimer;
+  bool _saving = false;
+  bool _saveAgain = false;
 
   Tool? _tool;
   EditState _draft = const EditState();
@@ -72,6 +89,7 @@ class _EditorPageState extends State<EditorPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     Renderer.load().then((r) {
       if (!mounted) return;
       r.lut.onReady = _rerender;
@@ -79,11 +97,21 @@ class _EditorPageState extends State<EditorPage> {
       if (r.failedShaders.isNotEmpty) {
         _toast('Some effects are unavailable on this device: ${r.failedShaders.join(', ')}');
       }
+      _bootstrap();
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Save when the app goes to the background (or the web tab is hidden).
+    if (state != AppLifecycleState.resumed) _saveNow();
+  }
+
+  @override
   void dispose() {
+    // Starts the final save before the images below are released.
+    _saveNow();
+    WidgetsBinding.instance.removeObserver(this);
     for (final i in [_full, _preview, _thumb, _shown, ..._overlays.values]) {
       _retire(i);
     }
@@ -103,40 +131,77 @@ class _EditorPageState extends State<EditorPage> {
   // ---------------------------------------------------------------- loading
 
   Future<void> _showOpen() async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(
-            leading: const Icon(Icons.folder_open),
-            title: const Text('Browse files (JPEG, PNG, TIFF, DNG, RAW)'),
-            onTap: () => Navigator.pop(ctx, 'file'),
-          ),
-          if (platformHasPhotoPicker)
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Photo library'),
-              onTap: () => Navigator.pop(ctx, 'gallery'),
-            ),
-          if (platformHasPhotoPicker)
-            ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: const Text('Camera'),
-              onTap: () => Navigator.pop(ctx, 'camera'),
-            ),
-        ]),
-      ),
-    );
-    if (choice == null) return;
-    try {
-      final f = choice == 'file' ? await pickImageFile() : await platformPickPhoto(camera: choice == 'camera');
-      if (f != null) await _loadBytes(f.bytes, f.name);
-    } catch (e) {
-      _toast('Could not open file: $e');
+    final f = await choosePhoto(context);
+    if (f != null) await _startNew(f);
+  }
+
+  void _bootstrap() {
+    final id = widget.projectId;
+    final photo = widget.newPhoto;
+    if (id != null) {
+      _openProject(id);
+    } else if (photo != null) {
+      _startNew(photo);
     }
   }
 
-  Future<void> _loadBytes(Uint8List bytes, String name) async {
+  /// Opens [f] as a brand new project.
+  Future<void> _startNew(PickedImage f) async {
+    await _saveNow(); // keep the previous photo's edits
+    _projectId = null;
+    final ok = await _loadBytes(f.bytes, f.name);
+    final store = ProjectStore.instance;
+    if (!ok || !mounted || !store.available) return;
+    try {
+      final name = baseName(f.name);
+      _projectId = await store.create(name: name, sourceName: f.name, bytes: f.bytes);
+      setState(() => _projectName = name);
+      _saveNow();
+    } catch (e) {
+      _toast('Could not save project: $e');
+    }
+  }
+
+  Future<void> _openProject(String id) async {
+    final store = ProjectStore.instance;
+    final meta = store.get(id);
+    Uint8List? src;
+    try {
+      src = await store.readSource(id);
+    } catch (_) {}
+    if (meta == null || src == null) {
+      _toast('This project could not be opened.');
+      if (mounted) Navigator.of(context).maybePop();
+      return;
+    }
+    EditState? edit;
+    try {
+      edit = editFromJson(meta.edit);
+    } catch (_) {}
+    final ok = await _loadBytes(src, meta.sourceName, initial: edit);
+    if (!ok || !mounted) {
+      if (mounted) Navigator.of(context).maybePop();
+      return;
+    }
+    for (final e in meta.overlays.entries) {
+      try {
+        final bytes = await store.readOverlay(id, e.key);
+        if (bytes == null) continue;
+        final img = await loadImage(bytes, e.value, maxSide: 2048);
+        _overlays[e.key] = img;
+        _overlayNames[e.key] = e.value;
+        if (e.key >= _nextOverlay) _nextOverlay = e.key + 1;
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() {
+      _projectId = id;
+      _projectName = meta.name;
+    });
+    _rerender();
+  }
+
+  Future<bool> _loadBytes(Uint8List bytes, String name, {EditState? initial}) async {
     setState(() => _busy = true);
     try {
       final full = await loadImage(bytes, name);
@@ -151,24 +216,91 @@ class _EditorPageState extends State<EditorPage> {
         _thumb = thumb;
         _shown = null;
         _overlays.clear();
+        _overlayNames.clear();
+        _nextOverlay = 1;
         _faces = [];
         _facesLoaded = false;
         _frameBytes = null;
         _history
           ..clear()
           ..add(const EditState());
-        _cursor = 0;
+        // A reopened project starts from its saved edit; one undo shows the original.
+        if (initial != null) _history.add(initial);
+        _cursor = _history.length - 1;
         _tool = null;
       });
       for (final i in old) {
         _retire(i);
       }
       _rerender();
+      return true;
     } catch (e) {
       _toast('Could not open image: $e');
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  // ---------------------------------------------------------------- saving
+
+  void _scheduleSave() {
+    if (_projectId == null) return;
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 800), _saveNow);
+  }
+
+  /// Saves the applied edits and a fresh thumbnail to the project.
+  Future<void> _saveNow() async {
+    _saveTimer?.cancel();
+    final id = _projectId;
+    final r = _renderer;
+    final src = _preview;
+    if (id == null || r == null || src == null) return;
+    if (_saving) {
+      _saveAgain = true;
+      return;
+    }
+    _saving = true;
+    try {
+      final state = _history[_cursor];
+      final edit = editToJson(state);
+      final names = Map<int, String>.of(_overlayNames);
+      final name = _projectName;
+      // Take everything that needs the live images before the first await, so
+      // a save started while leaving the screen still works.
+      final small = scaleToMax(src, 360);
+      final extras = _extras;
+      ui.Image? out;
+      try {
+        if (!state.curves.isIdentity) await r.lut.ensure(state.curves);
+        out = r.render(small, state, extras: extras);
+      } catch (_) {}
+      small.dispose();
+      Uint8List? jpg;
+      if (out != null) {
+        try {
+          jpg = await encodeExport(out, ExportFormat.jpeg, quality: 80);
+        } catch (_) {}
+        out.dispose();
+      }
+      await ProjectStore.instance.saveEdit(id, edit: edit, overlays: names, name: name, thumb: jpg);
+    } catch (_) {
+      // Saving is best effort; the next change tries again.
+    } finally {
+      _saving = false;
+      if (_saveAgain) {
+        _saveAgain = false;
+        _saveNow();
+      }
+    }
+  }
+
+  Future<void> _renameProject() async {
+    final n = await promptProjectName(context, _projectName ?? '');
+    if (n == null || !mounted) return;
+    setState(() => _projectName = n);
+    _saveNow();
   }
 
   // -------------------------------------------------------------- rendering
@@ -218,18 +350,21 @@ class _EditorPageState extends State<EditorPage> {
       _tool = null;
     });
     _rerender();
+    _scheduleSave();
   }
 
   void _undo() {
     if (_cursor == 0) return;
     _cursor--;
     _rerender();
+    _scheduleSave();
   }
 
   void _redo() {
     if (_cursor >= _history.length - 1) return;
     _cursor++;
     _rerender();
+    _scheduleSave();
   }
 
   void _update(EditState s) {
@@ -484,6 +619,13 @@ class _EditorPageState extends State<EditorPage> {
       final img = await loadImage(f.bytes, f.name, maxSide: 2048);
       final id = _nextOverlay++;
       _overlays[id] = img;
+      _overlayNames[id] = f.name;
+      final pid = _projectId;
+      if (pid != null) {
+        try {
+          await ProjectStore.instance.putOverlay(pid, id, f.bytes);
+        } catch (_) {}
+      }
       var d = _draft.copyWith(deImage: id);
       if (d[Param.deOpacity] == 0) d = d.withValue(Param.deOpacity, 0.5);
       _update(d);
@@ -581,6 +723,10 @@ class _EditorPageState extends State<EditorPage> {
     switch (v) {
       case 'open':
         _showOpen();
+      case 'save':
+        _saveNow().then((_) => _toast('Project saved'));
+      case 'rename':
+        _renameProject();
       case 'jpg':
         _export(ExportFormat.jpeg);
       case 'png':
@@ -601,7 +747,10 @@ class _EditorPageState extends State<EditorPage> {
       backgroundColor: const Color(0xFF101010),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1B1B1B),
-        title: const Text('Penumbra'),
+        title: Text(
+          editing && _projectName != null ? _projectName! : 'Penumbra',
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: editing ? _actions() : null,
       ),
       body: Column(children: [
@@ -628,7 +777,9 @@ class _EditorPageState extends State<EditorPage> {
           PopupMenuButton<String>(
             onSelected: _onMenu,
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'open', child: Text('Open…')),
+              const PopupMenuItem(value: 'open', child: Text('New project from photo…')),
+              if (_projectId != null) const PopupMenuItem(value: 'save', child: Text('Save project')),
+              if (_projectId != null) const PopupMenuItem(value: 'rename', child: Text('Rename project')),
               const PopupMenuItem(value: 'jpg', child: Text('Save as JPEG')),
               const PopupMenuItem(value: 'png', child: Text('Save as PNG')),
               const PopupMenuItem(value: 'tif', child: Text('Save as TIFF')),

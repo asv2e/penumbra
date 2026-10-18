@@ -71,4 +71,42 @@ if [ -d macos ]; then
   fi
 fi
 
+# ---- App name, description and icon (replaces the default Flutter ones) ----
+DESC="Non-destructive photo editor with 36 tools, from curves and lens blur to film looks. Opens JPEG, PNG, TIFF and DNG/RAW."
+
+if [ -f android/app/src/main/AndroidManifest.xml ]; then
+  sed -i.bak -E 's/android:label="[^"]*"/android:label="Penumbra"/' android/app/src/main/AndroidManifest.xml
+  rm -f android/app/src/main/AndroidManifest.xml.bak
+fi
+
+if [ -d ios ] && [ -x /usr/libexec/PlistBuddy ]; then
+  for k in CFBundleDisplayName CFBundleName; do
+    /usr/libexec/PlistBuddy -c "Delete :$k" ios/Runner/Info.plist 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Add :$k string Penumbra" ios/Runner/Info.plist
+  done
+fi
+
+if [ -f web/index.html ]; then
+  sed -i.bak -E \
+    -e "s|<meta name=\"description\" content=\"[^\"]*\">|<meta name=\"description\" content=\"$DESC\">|" \
+    -e 's|<title>[^<]*</title>|<title>Penumbra</title>|' \
+    -e 's|(name="apple-mobile-web-app-title" content=")[^"]*"|\1Penumbra"|' web/index.html
+  rm -f web/index.html.bak
+fi
+if [ -f web/manifest.json ]; then
+  sed -i.bak -E \
+    -e 's|("name": )"[^"]*"|\1"Penumbra"|' \
+    -e 's|("short_name": )"[^"]*"|\1"Penumbra"|' \
+    -e "s|(\"description\": )\"[^\"]*\"|\1\"$DESC\"|" web/manifest.json
+  rm -f web/manifest.json.bak
+fi
+
+[ -f windows/runner/main.cpp ] && sed -i.bak 's/L"penumbra"/L"Penumbra"/' windows/runner/main.cpp && rm -f windows/runner/main.cpp.bak
+[ -f linux/runner/my_application.cc ] && sed -i.bak 's/"penumbra"/"Penumbra"/g' linux/runner/my_application.cc && rm -f linux/runner/my_application.cc.bak
+
+# Launcher icons for every platform folder that exists (needs the PNG masters
+# in assets/icon; regenerate them from the SVG geometry with tools/make_icons.py).
+flutter pub get
+dart run flutter_launcher_icons
+
 echo "Platforms ready: $PLATFORMS"

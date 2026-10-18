@@ -1,5 +1,5 @@
 name: penumbra
-description: Non-destructive photo editor with 36 tools. JPEG, PNG, TIFF and DNG/RAW input.
+description: Non-destructive photo editor with 36 tools, from curves and lens blur to film looks. Opens JPEG, PNG, TIFF and DNG/RAW.
 publish_to: none
 version: 1.0.0+1
 
@@ -17,12 +17,15 @@ dependencies:
   gal: ">=2.3.0 <3.0.0"
   share_plus: ">=10.1.4 <11.0.0"
   path_provider: ^2.1.4
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
   google_mlkit_face_detection: ">=0.11.0 <1.0.0"
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ">=4.0.0 <7.0.0"
+  flutter_launcher_icons: ">=0.13.1 <1.0.0"
 
 flutter:
   uses-material-design: true
@@ -32,3 +35,26 @@ flutter:
     - shaders/fx.frag
     - shaders/warp.frag
     - shaders/brush.frag
+
+# Regenerate platform icons with: dart run flutter_launcher_icons
+# (tools/setup_platforms.sh does this). Sources: assets/icon/icon.svg and
+# icon_foreground.svg; the PNG masters come from tools/make_icons.py.
+flutter_launcher_icons:
+  image_path: assets/icon/icon.png
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0E1F24"
+  adaptive_icon_foreground: assets/icon/icon_foreground.png
+  web:
+    generate: true
+    image_path: assets/icon/icon.png
+    background_color: "#091215"
+    theme_color: "#4DB6AC"
+  windows:
+    generate: true
+    image_path: assets/icon/icon.png
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: assets/icon/icon.png

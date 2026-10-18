@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Penumbra (adaptive icon foreground)</title>
+  <defs>
+    <linearGradient id="lit" x1="0.15" y1="0.1" x2="0.85" y2="0.9">
+      <stop offset="0" stop-color="#A8F5EA"/>
+      <stop offset="0.55" stop-color="#4DB6AC"/>
+      <stop offset="1" stop-color="#1F7F76"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="70"/>
+    </filter>
+    <mask id="shade" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <circle cx="612" cy="512" r="270" fill="#000" filter="url(#soft)"/>
+    </mask>
+  </defs>
+  <!-- Scaled to 80% so the mark stays inside the adaptive-icon safe zone. -->
+  <g transform="translate(512 512) scale(0.8) translate(-512 -512)">
+    <circle cx="412" cy="512" r="270" fill="#4DB6AC" opacity="0.30" filter="url(#glow)"/>
+    <circle cx="412" cy="512" r="270" fill="url(#lit)" mask="url(#shade)"/>
+    <circle cx="612" cy="512" r="270" fill="none" stroke="#7FE3D6" stroke-opacity="0.28" stroke-width="6"/>
+  </g>
+</svg>
