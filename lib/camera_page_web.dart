@@ -151,9 +151,9 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
           _canTryAnotherCamera(initialError)) {
         try {
           final candidates = (await mediaDevices.enumerateDevices())
-    .where((d) => d.kind == 'videoinput' && (d.deviceId ?? '').isNotEmpty)
-    .cast<html.MediaDeviceInfo>()
-    .toList();
+              .where((d) => d.kind == 'videoinput' && (d.deviceId ?? '').isNotEmpty)
+              .cast<html.MediaDeviceInfo>()
+              .toList();
           for (final candidate in candidates) {
             try {
               stream = await _requestStream(mediaDevices, candidate.deviceId);
@@ -184,10 +184,11 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
       // Enumerate after capture has started. Unusable devices remain listed,
       // but they can no longer prevent the default working camera from opening.
       var devices = <html.MediaDeviceInfo>[];
-      devices = (await mediaDevices.enumerateDevices())
-    .where((d) => d.kind == 'videoinput' && (d.deviceId ?? '').isNotEmpty)
-    .cast<html.MediaDeviceInfo>()
-    .toList();
+      try {
+        devices = (await mediaDevices.enumerateDevices())
+            .where((d) => d.kind == 'videoinput' && (d.deviceId ?? '').isNotEmpty)
+            .cast<html.MediaDeviceInfo>()
+            .toList();
       } catch (_) {
         // A working video stream is enough for capture; device switching is optional.
       }
@@ -320,6 +321,11 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
         ],
       ),
     );
