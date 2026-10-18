@@ -32,7 +32,7 @@ jobs:
           bash tools/validate_shaders.sh
 
   android:
-    name: Android (APK + AAB)
+    name: Android (APK, AAB, XAPK)
     needs: analyze
     runs-on: ubuntu-latest
     steps:
@@ -49,6 +49,8 @@ jobs:
       - run: flutter pub get
       - run: flutter build apk --release
       - run: flutter build appbundle --release
+      - name: Package XAPK
+        run: bash tools/build.sh android-xapk
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
@@ -57,9 +59,13 @@ jobs:
         with:
           name: android-aab
           path: build/app/outputs/bundle/release/app-release.aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-xapk
+          path: dist/*.xapk
 
   ios:
-    name: iOS (unsigned IPA)
+    name: iOS (.app + unsigned IPA)
     needs: analyze
     runs-on: macos-latest
     steps:
@@ -69,22 +75,27 @@ jobs:
           channel: stable
           cache: true
       - run: bash tools/setup_platforms.sh ios
-      - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
-      - name: Package unsigned IPA
-        run: |
-          mkdir -p Payload
-          cp -R build/ios/iphoneos/Runner.app Payload/
-          zip -qr penumbra_unsigned.ipa Payload
+      - name: Build .app and unsigned IPA
+        run: bash tools/build.sh ios-app
       - uses: actions/upload-artifact@v4
         with:
-          name: ios
-          path: penumbra_unsigned.ipa
+          name: ios-app
+          path: dist/Penumbra-ios-*.app.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: dist/Penumbra-ios-*-unsigned.ipa
 
   web:
-    name: Web
+    name: Web (${{ matrix.target }})
     needs: analyze
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # web-js:     Dart compiled to JavaScript, no Dart-to-Wasm (CanvasKit renderer).
+        # web-skwasm: Dart compiled to WebAssembly, skwasm renderer, JS fallback included.
+        target: [web-js, web-skwasm]
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -92,15 +103,14 @@ jobs:
           channel: stable
           cache: true
       - run: bash tools/setup_platforms.sh web
-      - run: flutter pub get
-      - run: flutter build web --release
+      - run: bash tools/build.sh ${{ matrix.target }}
       - uses: actions/upload-artifact@v4
         with:
-          name: web
-          path: build/web
+          name: ${{ matrix.target }}
+          path: dist/${{ matrix.target }}
 
   linux:
-    name: Linux
+    name: Linux (AppImage + bundle)
     needs: analyze
     runs-on: ubuntu-latest
     steps:
@@ -108,24 +118,32 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
       - run: flutter config --enable-linux-desktop
       - run: bash tools/setup_platforms.sh linux
-      - run: flutter pub get
-      - run: flutter build linux --release
+      - name: Build bundle and AppImage
+        run: bash tools/build.sh linux-appimage
       - uses: actions/upload-artifact@v4
         with:
           name: linux
           path: build/linux/x64/release/bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: dist/*.AppImage
 
   windows:
-    name: Windows
+    name: Windows (MSI + folder)
     needs: analyze
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -133,18 +151,24 @@ jobs:
           channel: stable
           cache: true
       - run: flutter config --enable-windows-desktop
-      - name: Create platform folder
-        shell: bash
-        run: bash tools/setup_platforms.sh windows
-      - run: flutter pub get
-      - run: flutter build windows --release
+      - run: bash tools/setup_platforms.sh windows
+      - name: Install WiX 4
+        run: dotnet tool install --global wix --version "4.*"
+      - name: Build release folder and MSI
+        run: |
+          export PATH="$PATH:$(cygpath -u "$USERPROFILE")/.dotnet/tools"
+          bash tools/build.sh windows-msi
       - uses: actions/upload-artifact@v4
         with:
           name: windows
           path: build/windows/x64/runner/Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi
+          path: dist/*.msi
 
   macos:
-    name: macOS
+    name: macOS (.app + DMG)
     needs: analyze
     runs-on: macos-latest
     steps:
@@ -155,16 +179,16 @@ jobs:
           cache: true
       - run: flutter config --enable-macos-desktop
       - run: bash tools/setup_platforms.sh macos
-      - run: flutter pub get
-      - run: flutter build macos --release
-      - name: Zip app bundle
-        run: |
-          cd build/macos/Build/Products/Release
-          ditto -c -k --sequesterRsrc --keepParent penumbra.app "$GITHUB_WORKSPACE/penumbra_macos.zip"
+      - name: Build .app and DMG
+        run: bash tools/build.sh macos-app macos-dmg
       - uses: actions/upload-artifact@v4
         with:
-          name: macos
-          path: penumbra_macos.zip
+          name: macos-app
+          path: dist/Penumbra-macos-*.app.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist/Penumbra-*.dmg
 
   pages:
     name: Deploy web to GitHub Pages
@@ -207,7 +231,7 @@ jobs:
           path: dist
       - name: Zip folder artifacts
         run: |
-          for d in web linux windows; do
+          for d in web-js web-skwasm linux windows; do
             (cd "dist/$d" && zip -qr "../penumbra_$d.zip" .)
           done
       - uses: softprops/action-gh-release@v2
@@ -216,8 +240,14 @@ jobs:
           files: |
             dist/android-apk/*.apk
             dist/android-aab/*.aab
-            dist/ios/*.ipa
-            dist/macos/*.zip
-            dist/penumbra_web.zip
+            dist/android-xapk/*.xapk
+            dist/ios-app/*.zip
+            dist/ios-ipa/*.ipa
+            dist/macos-app/*.zip
+            dist/macos-dmg/*.dmg
+            dist/linux-appimage/*.AppImage
+            dist/windows-msi/*.msi
+            dist/penumbra_web-js.zip
+            dist/penumbra_web-skwasm.zip
             dist/penumbra_linux.zip
             dist/penumbra_windows.zip
