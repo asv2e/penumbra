@@ -192,7 +192,8 @@ windows_msi() {
     [ -f "$bundle/$dll" ] || cp "/c/Windows/System32/$dll" "$bundle/" 2>/dev/null || true
   done
   # Relative paths: wix is a native Windows tool and does not know Git Bash paths.
-  wix build tools/windows/Penumbra.wxs -arch x64 -sval \
+  # WiX v4 removed the legacy WiX v3 -sval switch.
+  wix build tools/windows/Penumbra.wxs -arch x64 \
     -d "Version=$VERSION.$BUILD" \
     -d "BundleDir=$bundle" \
     -d "IconFile=windows/runner/resources/app_icon.ico" \
