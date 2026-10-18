@@ -113,31 +113,43 @@ fi
 
 # Launcher icons for every platform folder that exists (needs the PNG masters
 # in assets/icon; regenerate them from the SVG geometry with tools/make_icons.py).
+# flutter_launcher_icons supports android, ios, web, windows and macos only. A
+# Linux-only run has nothing for it to do and it would fail with
+# "No platform specified within config", so it is skipped in that case.
 flutter pub get
-icons_cfg="$(mktemp -t penumbra-icons.XXXXXX)"
-{
-  echo "flutter_launcher_icons:"
-  echo "  image_path: assets/icon/icon.png"
-  if [ -d android ]; then
-    echo "  android: true"
-    echo "  adaptive_icon_background: \"#0E1F24\""
-    echo "  adaptive_icon_foreground: assets/icon/icon_foreground.png"
-  fi
-  if [ -d ios ]; then
-    echo "  ios: true"
-    echo "  remove_alpha_ios: true"
-  fi
-  if [ -d web ]; then
-    printf '  web:\n    generate: true\n    image_path: assets/icon/icon.png\n    background_color: "#091215"\n    theme_color: "#4DB6AC"\n'
-  fi
-  if [ -d windows ]; then
-    printf '  windows:\n    generate: true\n    image_path: assets/icon/icon.png\n    icon_size: 256\n'
-  fi
-  if [ -d macos ]; then
-    printf '  macos:\n    generate: true\n    image_path: assets/icon/icon.png\n'
-  fi
-} > "$icons_cfg"
-dart run flutter_launcher_icons -f "$icons_cfg"
-rm -f "$icons_cfg"
+icon_platforms=0
+for d in android ios web windows macos; do
+  if [ -d "$d" ]; then icon_platforms=1; fi
+done
+
+if [ "$icon_platforms" = 1 ]; then
+  icons_cfg="$(mktemp -t penumbra-icons.XXXXXX)"
+  {
+    echo "flutter_launcher_icons:"
+    echo "  image_path: assets/icon/icon.png"
+    if [ -d android ]; then
+      echo "  android: true"
+      echo "  adaptive_icon_background: \"#0E1F24\""
+      echo "  adaptive_icon_foreground: assets/icon/icon_foreground.png"
+    fi
+    if [ -d ios ]; then
+      echo "  ios: true"
+      echo "  remove_alpha_ios: true"
+    fi
+    if [ -d web ]; then
+      printf '  web:\n    generate: true\n    image_path: assets/icon/icon.png\n    background_color: "#091215"\n    theme_color: "#4DB6AC"\n'
+    fi
+    if [ -d windows ]; then
+      printf '  windows:\n    generate: true\n    image_path: assets/icon/icon.png\n    icon_size: 256\n'
+    fi
+    if [ -d macos ]; then
+      printf '  macos:\n    generate: true\n    image_path: assets/icon/icon.png\n'
+    fi
+  } > "$icons_cfg"
+  dart run flutter_launcher_icons -f "$icons_cfg"
+  rm -f "$icons_cfg"
+else
+  echo "No launcher-icon platform folder present (Linux has none); skipping flutter_launcher_icons."
+fi
 
 echo "Platforms ready: $PLATFORMS"

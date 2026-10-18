@@ -4,7 +4,7 @@
 # Usage: tools/build.sh <target>...
 #   web-js         Web, Dart compiled to JavaScript (plus CanvasKit). Works in every browser.
 #   web-skwasm     Web, Dart compiled to WebAssembly, skwasm renderer (falls back to JS).
-#   macos-app      Penumbra.app                         (run on macOS)
+#   macos-app      Penumbra.app + Penumbra-macos-<version>.app.zip   (run on macOS)
 #   macos-dmg      Penumbra-<version>.dmg               (run on macOS)
 #   ios-app        Penumbra.app, unsigned, + .ipa       (run on macOS)
 #   linux-appimage Penumbra-<version>-<arch>.AppImage   (run on Linux)
@@ -60,6 +60,9 @@ macos_app() {
   app="$(ls -d build/macos/Build/Products/Release/*.app | head -1)"
   rm -rf "$OUT/Penumbra.app"
   ditto "$app" "$OUT/Penumbra.app"
+  # An .app is a folder, so also ship it zipped.
+  rm -f "$OUT/Penumbra-macos-$VERSION.app.zip"
+  ditto -c -k --sequesterRsrc --keepParent "$OUT/Penumbra.app" "$OUT/Penumbra-macos-$VERSION.app.zip"
 }
 
 macos_dmg() {
@@ -143,7 +146,7 @@ android_xapk() {
   flutter build apk --release
   local apk pkg stage target size
   apk="build/app/outputs/flutter-apk/app-release.apk"
-  pkg="$(grep -hoE 'applicationId *=? *"[^"]+"' android/app/build.gradle* 2>/dev/null | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+  pkg="$(grep -hoE 'applicationId *=? *"[^"]+"' android/app/build.gradle* 2>/dev/null | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || true)"
   pkg="${pkg:-dev.penumbra.penumbra}"
   target="${TARGET_SDK:-35}"
   stage="$(mktemp -d)"
