@@ -106,7 +106,45 @@ fi
 
 # Launcher icons for every platform folder that exists (needs the PNG masters
 # in assets/icon; regenerate them from the SVG geometry with tools/make_icons.py).
+# The config is generated on the fly so flutter_launcher_icons only touches
+# platforms that are actually present (it fails hard on a missing android/ dir).
+ICON_CFG="$(mktemp "${TMPDIR:-/tmp}/launcher_icons.XXXXXX")"
+trap 'rm -f "$ICON_CFG"' EXIT
+{
+  echo "flutter_launcher_icons:"
+  echo "  image_path: assets/icon/icon.png"
+  if [ -d android ]; then
+    echo "  android: true"
+    echo "  adaptive_icon_background: \"#0E1F24\""
+    echo "  adaptive_icon_foreground: assets/icon/icon_foreground.png"
+  fi
+  if [ -d ios ]; then
+    echo "  ios: true"
+    echo "  remove_alpha_ios: true"
+  fi
+  if [ -d web ]; then
+    echo "  web:"
+    echo "    generate: true"
+    echo "    image_path: assets/icon/icon.png"
+    echo "    background_color: \"#091215\""
+    echo "    theme_color: \"#4DB6AC\""
+  fi
+  if [ -d windows ]; then
+    echo "  windows:"
+    echo "    generate: true"
+    echo "    image_path: assets/icon/icon.png"
+    echo "    icon_size: 256"
+  fi
+  if [ -d macos ]; then
+    echo "  macos:"
+    echo "    generate: true"
+    echo "    image_path: assets/icon/icon.png"
+  fi
+} > "$ICON_CFG"
+
 flutter pub get
-dart run flutter_launcher_icons
+if [ -d android ] || [ -d ios ] || [ -d web ] || [ -d windows ] || [ -d macos ]; then
+  dart run flutter_launcher_icons -f "$ICON_CFG"
+fi
 
 echo "Platforms ready: $PLATFORMS"
