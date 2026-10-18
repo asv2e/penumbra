@@ -36,23 +36,9 @@ flutter:
     - shaders/warp.frag
     - shaders/brush.frag
 
-# Regenerate platform icons with: dart run flutter_launcher_icons
-# (tools/setup_platforms.sh does this). Sources: assets/icon/icon.svg and
-# icon_foreground.svg; the PNG masters come from tools/make_icons.py.
-flutter_launcher_icons:
-  image_path: assets/icon/icon.png
-  android: true
-  ios: true
-  remove_alpha_ios: true
-  adaptive_icon_background: "#0E1F24"
-  adaptive_icon_foreground: assets/icon/icon_foreground.png
-  web:
-    generate: true
-    image_path: assets/icon/icon.png
-    background_color: "#091215"
-    theme_color: "#4DB6AC"
-  windows:
-    generate: true
+# Launcher icons are configured per platform by tools/setup_platforms.sh, which
+# only enables the platforms whose folders exist. Sources: assets/icon/icon.svg
+# and icon_foreground.svg; the PNG masters come from tools/make_icons.py.
     image_path: assets/icon/icon.png
     icon_size: 256
   macos:
