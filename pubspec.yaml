@@ -39,8 +39,3 @@ flutter:
 # Launcher icons are configured per platform by tools/setup_platforms.sh, which
 # only enables the platforms whose folders exist. Sources: assets/icon/icon.svg
 # and icon_foreground.svg; the PNG masters come from tools/make_icons.py.
-    image_path: assets/icon/icon.png
-    icon_size: 256
-  macos:
-    generate: true
-    image_path: assets/icon/icon.png
