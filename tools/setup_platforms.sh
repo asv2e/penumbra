@@ -67,7 +67,14 @@ if [ -d macos ]; then
       [ -f "$f" ] || continue
       /usr/libexec/PlistBuddy -c "Delete :com.apple.security.files.user-selected.read-write" "$f" 2>/dev/null || true
       /usr/libexec/PlistBuddy -c "Add :com.apple.security.files.user-selected.read-write bool true" "$f"
+      # Camera for the in-app camera screen.
+      /usr/libexec/PlistBuddy -c "Delete :com.apple.security.device.camera" "$f" 2>/dev/null || true
+      /usr/libexec/PlistBuddy -c "Add :com.apple.security.device.camera bool true" "$f"
     done
+    if [ -f macos/Runner/Info.plist ]; then
+      /usr/libexec/PlistBuddy -c "Delete :NSCameraUsageDescription" macos/Runner/Info.plist 2>/dev/null || true
+      /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string Take photos to edit." macos/Runner/Info.plist
+    fi
   fi
 fi
 
@@ -106,10 +113,8 @@ fi
 
 # Launcher icons for every platform folder that exists (needs the PNG masters
 # in assets/icon; regenerate them from the SVG geometry with tools/make_icons.py).
-# The config is generated on the fly so flutter_launcher_icons only touches
-# platforms that are actually present (it fails hard on a missing android/ dir).
-ICON_CFG="$(mktemp "${TMPDIR:-/tmp}/launcher_icons.XXXXXX")"
-trap 'rm -f "$ICON_CFG"' EXIT
+flutter pub get
+icons_cfg="$(mktemp -t penumbra-icons.XXXXXX)"
 {
   echo "flutter_launcher_icons:"
   echo "  image_path: assets/icon/icon.png"
@@ -123,28 +128,16 @@ trap 'rm -f "$ICON_CFG"' EXIT
     echo "  remove_alpha_ios: true"
   fi
   if [ -d web ]; then
-    echo "  web:"
-    echo "    generate: true"
-    echo "    image_path: assets/icon/icon.png"
-    echo "    background_color: \"#091215\""
-    echo "    theme_color: \"#4DB6AC\""
+    printf '  web:\n    generate: true\n    image_path: assets/icon/icon.png\n    background_color: "#091215"\n    theme_color: "#4DB6AC"\n'
   fi
   if [ -d windows ]; then
-    echo "  windows:"
-    echo "    generate: true"
-    echo "    image_path: assets/icon/icon.png"
-    echo "    icon_size: 256"
+    printf '  windows:\n    generate: true\n    image_path: assets/icon/icon.png\n    icon_size: 256\n'
   fi
   if [ -d macos ]; then
-    echo "  macos:"
-    echo "    generate: true"
-    echo "    image_path: assets/icon/icon.png"
+    printf '  macos:\n    generate: true\n    image_path: assets/icon/icon.png\n'
   fi
-} > "$ICON_CFG"
-
-flutter pub get
-if [ -d android ] || [ -d ios ] || [ -d web ] || [ -d windows ] || [ -d macos ]; then
-  dart run flutter_launcher_icons -f "$ICON_CFG"
-fi
+} > "$icons_cfg"
+dart run flutter_launcher_icons -f "$icons_cfg"
+rm -f "$icons_cfg"
 
 echo "Platforms ready: $PLATFORMS"

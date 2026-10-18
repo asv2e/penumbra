@@ -12,6 +12,9 @@ import 'image_io.dart';
 bool get _mobile => Platform.isAndroid || Platform.isIOS;
 
 bool get platformHasPhotoPicker => _mobile;
+
+/// Windows, macOS and Linux use the in-app camera screen.
+bool get platformHasInAppCamera => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 bool get platformCanShare => _mobile || Platform.isMacOS;
 
 Future<PickedImage?> platformPickPhoto({required bool camera}) async {

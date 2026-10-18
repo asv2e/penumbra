@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show ValueNotifier;
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 /// Summary of a saved project. [edit] is the JSON from `editToJson`.
 class ProjectMeta {
@@ -78,7 +78,7 @@ class ProjectMeta {
   }
 }
 
-/// Projects saved inside the app. Hive keeps them in IndexedDB on web and in
+/// Projects saved inside the app. Hive CE (works in WebAssembly builds too) keeps them in IndexedDB on web and in
 /// the app's documents folder elsewhere, so the same code runs everywhere.
 ///
 /// Layout:

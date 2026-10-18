@@ -14,11 +14,13 @@ dependencies:
   archive: ">=3.4.0 <5.0.0"
   file_selector: ^1.0.3
   image_picker: ^1.1.2
+  camera: ^0.11.0
+  camera_desktop: ">=1.2.1 <3.0.0"
   gal: ">=2.3.0 <3.0.0"
   share_plus: ">=10.1.4 <11.0.0"
   path_provider: ^2.1.4
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
+  hive_ce: ">=2.9.0 <3.0.0"
+  hive_ce_flutter: ">=2.0.2 <3.0.0"
   google_mlkit_face_detection: ">=0.11.0 <1.0.0"
 
 dev_dependencies:
@@ -36,6 +38,25 @@ flutter:
     - shaders/warp.frag
     - shaders/brush.frag
 
-# Launcher icons are configured per platform by tools/setup_platforms.sh, which
-# only enables the platforms whose folders exist. Sources: assets/icon/icon.svg
-# and icon_foreground.svg; the PNG masters come from tools/make_icons.py.
+# Regenerate platform icons with: dart run flutter_launcher_icons
+# (tools/setup_platforms.sh does this). Sources: assets/icon/icon.svg and
+# icon_foreground.svg; the PNG masters come from tools/make_icons.py.
+flutter_launcher_icons:
+  image_path: assets/icon/icon.png
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0E1F24"
+  adaptive_icon_foreground: assets/icon/icon_foreground.png
+  web:
+    generate: true
+    image_path: assets/icon/icon.png
+    background_color: "#091215"
+    theme_color: "#4DB6AC"
+  windows:
+    generate: true
+    image_path: assets/icon/icon.png
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: assets/icon/icon.png

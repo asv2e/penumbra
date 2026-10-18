@@ -6,6 +6,9 @@ import 'image_io.dart';
 
 /// Web: downloads only.
 bool get platformHasPhotoPicker => false;
+
+/// Web uses the in-app camera screen (browser camera, needs HTTPS or localhost).
+bool get platformHasInAppCamera => true;
 bool get platformCanShare => false;
 
 Future<PickedImage?> platformPickPhoto({required bool camera}) async => null;

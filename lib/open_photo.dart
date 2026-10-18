@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'camera_page.dart';
 import 'image_io.dart';
 import 'platform_api.dart';
 
@@ -21,7 +22,7 @@ Future<PickedImage?> choosePhoto(BuildContext context) async {
             title: const Text('Photo library'),
             onTap: () => Navigator.pop(ctx, 'gallery'),
           ),
-        if (platformHasPhotoPicker)
+        if (platformHasPhotoPicker || platformHasInAppCamera)
           ListTile(
             leading: const Icon(Icons.photo_camera),
             title: const Text('Camera'),
@@ -32,7 +33,14 @@ Future<PickedImage?> choosePhoto(BuildContext context) async {
   );
   if (choice == null) return null;
   try {
-    return choice == 'file' ? await pickImageFile() : await platformPickPhoto(camera: choice == 'camera');
+    if (choice == 'file') return await pickImageFile();
+    if (choice == 'camera' && !platformHasPhotoPicker) {
+      // Web and desktop: capture inside the app.
+      return await Navigator.of(context).push<PickedImage>(
+        MaterialPageRoute(builder: (_) => const CameraCapturePage()),
+      );
+    }
+    return await platformPickPhoto(camera: choice == 'camera');
   } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open file: $e')));
