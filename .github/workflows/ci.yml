@@ -152,8 +152,8 @@ jobs:
           cache: true
       - run: flutter config --enable-windows-desktop
       - run: bash tools/setup_platforms.sh windows
-      - name: Install WiX 4
-        run: dotnet tool install --global wix --version "4.*"
+      - name: Install WiX 5
+        run: dotnet tool install --global wix --version "5.*"
       - name: Build release folder and MSI
         run: |
           export PATH="$PATH:$(cygpath -u "$USERPROFILE")/.dotnet/tools"
